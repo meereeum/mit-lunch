@@ -9,9 +9,7 @@ from dateutil import parser
 
 def get_dishes(date='today', menu='Classic Cuisine'):
     date = convert_date(date) # str -> datetime
-
-    date_str = '-'.join([str(date.year), '{:02d}'.format(date.month),
-                            '{:02d}'.format(date.day)])
+    date_str = date.strftime('%Y-%m-%d')
 
     BASE_URL = 'http://mit.campusdish.com/Commerce/Catalog/Menus.aspx'
     PARAMS = [('LocationId', '4932'), # Koch cafe
@@ -33,7 +31,6 @@ def dedupe(lst):
     """list -> deduped iterable of items, in order"""
     return OrderedDict((item, None) for item in lst).keys()
 
-
 def convert_date(date_in):
     """Convert string to `datetime`"""
     D_CONVERSIONS = {
@@ -54,7 +51,7 @@ def convert_date(date_in):
 
     try: # if str, convert to datetime
         date_out = parser.parse(date_out)
-    except(AttributeError):
+    except(AttributeError, TypeError):
         date_out = date_out
     except(ValueError):
         print("I don't recognize that date.. try again ?")
