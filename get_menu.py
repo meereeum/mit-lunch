@@ -20,9 +20,8 @@ def get_dishes(date='today', menu='Classic Cuisine'):
     print('Reading the menu...')
     soup = BeautifulSoup(requests.get(BASE_URL, PARAMS).content, 'lxml')
 
-    dishes = [dish.string for section in soup('div', class_='menu-details-station')
-              for dish in section('a', rel='prettyPhotoiFrameWithoutNavigation')
-              if section.h2.string == menu]
+    menu_div = soup.find('div', attrs={'aria-label': menu})
+    dishes = [dish.string for dish in menu_div('a', rel='prettyPhotoiFrameWithoutNavigation')]
 
     return dedupe(dishes)
 
