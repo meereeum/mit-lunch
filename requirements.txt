@@ -1,2 +1,1 @@
-bs4==4.6.0
-dateutil==2.6.0
+git+https://github.com/meereeum/CLIppy.git
