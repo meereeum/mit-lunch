@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 
 from more_itertools import first, intersperse
@@ -7,7 +8,9 @@ from CLIppy import convert_date, dedupe, fail_gracefully, flatten, pprint_header
 
 
 @fail_gracefully
-def get_dishes(date='today', joinstr='    ~', stations=('Home', 'Stockpot', 'rotating')):
+def get_dishes(date='today', joinstr='    ~',
+               stations=('Home', 'Stockpot', 'rotating')):
+
     date_str = convert_date(date) # str -> datetime
 
     BASE_URL = 'https://mit.cafebonappetit.com/cafe/koch-cafe/{}'.format(
@@ -18,21 +21,25 @@ def get_dishes(date='today', joinstr='    ~', stations=('Home', 'Stockpot', 'rot
 
     KEY = "Bamco.menu_items"
 
-    script = first((sc.text for sc in soup.find_all('script') if any(
-        (l.startswith(KEY) for l in sc.text.split()))), None)
+    try:
+        script = first((sc.text for sc in soup.find_all('script')
+                        if any((l.startswith(KEY) for l in sc.text.split()))))
 
-    if script is None:
-        return [] # error
+        messymenujsonstr = first((l for l in script.split('\n')
+                                  if l.strip().startswith(KEY)))
 
-    menujsonstr = (first((l for l in script.split('\n')
-                          if l.strip().startswith(KEY)))
-                   .strip().replace('{} = '.format(KEY), ''))[:-1] # strip trailing ;
+    except(ValueError): # no menu items found
+        return []
 
+    menujsonstr = re.sub(';\s*$', '',                           # strip trailing ;
+                         re.sub('\s*{}\s*=\s*'.format(KEY), '', # strip `KEY = `
+                                messymenujsonstr))
     menujson = json.loads(menujsonstr)
 
     dishes = flatten(intersperse(
         (joinstr,), ((dish['label'] for dish in menujson.values()
-                   if station in dish['station']) for station in stations)))
+                      if station in dish['station'])
+                     for station in stations)))
 
     #return dedupe(dishes)
     return dishes
