@@ -1,24 +1,41 @@
+import json
 import sys
 
-from CLIppy import convert_date, dedupe, pprint_header_with_lines, soup_me
+from more_itertools import first, intersperse
+
+from CLIppy import convert_date, dedupe, fail_gracefully, flatten, pprint_header_with_lines, soup_me
 
 
-def get_dishes(date='today', menu='Classic Cuisine'):
+@fail_gracefully
+def get_dishes(date='today', joinstr='    ~', stations=('Home', 'Stockpot', 'rotating')):
     date_str = convert_date(date) # str -> datetime
 
-    BASE_URL = 'http://mit.campusdish.com/Commerce/Catalog/Menus.aspx'
-    PARAMS = [('LocationId', '4932'), # Koch cafe
-              ('PeriodId', '1440'), # lunch
-              ('MenuDate', date_str),
-              ('Mode', 'day')]
+    BASE_URL = 'https://mit.cafebonappetit.com/cafe/koch-cafe/{}'.format(
+        date_str)
 
     print('Reading the menu...')
-    soup = soup_me(BASE_URL, PARAMS)
+    soup = soup_me(BASE_URL)
 
-    menu_div = soup.find('div', attrs={'aria-label': menu})
-    dishes = [dish.string for dish in menu_div('a', rel='prettyPhotoiFrameWithoutNavigation')]
+    KEY = "Bamco.menu_items"
 
-    return dedupe(dishes)
+    script = first((sc.text for sc in soup.find_all('script') if any(
+        (l.startswith(KEY) for l in sc.text.split()))), None)
+
+    if script is None:
+        return [] # error
+
+    menujsonstr = (first((l for l in script.split('\n')
+                          if l.strip().startswith(KEY)))
+                   .strip().replace('{} = '.format(KEY), ''))[:-1] # strip trailing ;
+
+    menujson = json.loads(menujsonstr)
+
+    dishes = flatten(intersperse(
+        (joinstr,), ((dish['label'] for dish in menujson.values()
+                   if station in dish['station']) for station in stations)))
+
+    #return dedupe(dishes)
+    return dishes
 
 
 if __name__ == '__main__':
@@ -30,5 +47,9 @@ if __name__ == '__main__':
 
     header = 'How about'
     food = get_dishes(**kwargs)
-    print(''); pprint_header_with_lines(header, food); print('')
-    #print(''); print('__How about__'); print('\n'.join(food)); print('')
+
+    if food:
+        print(); pprint_header_with_lines(header, food); print()
+        #print(); print('__How about__'); print('\n'.join(food)); print()
+    else:
+        print('...nothing on the menu')
