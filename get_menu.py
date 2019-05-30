@@ -8,7 +8,7 @@ from CLIppy import convert_date, dedupe, fail_gracefully, flatten, pprint_header
 
 
 @fail_gracefully
-def get_dishes(date='today', joinstr='    ~',
+def get_dishes(date='today', joinstr='    ⊰ ☙ ⊱', #'    ~',
                stations=('Home', 'Stockpot', 'rotating')):
 
     date_str = convert_date(date) # str -> datetime
@@ -36,17 +36,17 @@ def get_dishes(date='today', joinstr='    ~',
                                 messymenujsonstr))
     menujson = json.loads(menujsonstr)
 
-    dishes = flatten(intersperse(
-        (joinstr,), ((dish['label'] for dish in menujson.values()
-                      if station in dish['station'])
-                     for station in stations)))
+    menuitems = ([dish['label'] for dish in menujson.values() if station in dish['station']]
+                 for station in stations) # menus by station
+
+    dishes = flatten(intersperse((joinstr,), filter(None, menuitems))) # ignore empty
 
     #return dedupe(dishes)
     return dishes
 
 
 if __name__ == '__main__':
-    kwargs = {}
+    kwargs = {} # this is where more defaults could go in the future..
     try:
         kwargs['date'] = sys.argv[1]
     except(IndexError):
@@ -57,6 +57,5 @@ if __name__ == '__main__':
 
     if food:
         print(); pprint_header_with_lines(header, food); print()
-        #print(); print('__How about__'); print('\n'.join(food)); print()
     else:
         print('...nothing on the menu')
